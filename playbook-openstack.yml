@@ -1,0 +1,80 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  tasks:
+  - name: Create security groups
+    os_security_group:
+      cloud: betacloud
+      name: "{{ item.key }}"
+    with_dict: "{{ security_group_rules }}"
+
+  - name: Create security group rules
+    os_security_group_rule:
+      cloud: betacloud
+      security_group: "{{ item.key }}"
+      protocol: "{{ item.value.proto | default(omit) }}"
+      port_range_min: "{{ item.value.port | default(omit) }}"
+      port_range_max: "{{ item.value.port | default(omit) }}"
+      remote_ip_prefix: "{{ item.value.cidr | default(omit) }}"
+    with_dict: "{{ security_group_rules }}"
+
+  - name: Create keypair
+    os_keypair:
+      cloud: betacloud
+      name: infrastructure
+    register: keypair
+
+  - name: Persist the keypair
+    copy:
+      dest: secrets/id_rsa
+      content: "{{ keypair.key.private_key }}"
+      mode: 0600
+    when: keypair.changed
+
+  - name: Create bastion instance
+    os_server:
+      cloud: betacloud
+      name: "bastion"
+      flavor: 1C-1GB-10GB
+      image: "Ubuntu 16.04 (Xenial Xerus)"
+      security_groups:
+        - bastion
+      key_name: infrastructure
+      floating_ip_pools: public
+      delete_fip: yes
+      meta: "groups=bastion"
+      state: present
+
+  - name: Create internal docker instances
+    os_server:
+      cloud: betacloud
+      name: "docker-internal-{{ item }}"
+      flavor: 2C-4GB-10GB
+      image: "Ubuntu 16.04 (Xenial Xerus)"
+      security_groups:
+        - internal
+      key_name: infrastructure
+      auto_ip: no
+      meta: "groups=internal"
+      state: present
+    with_items:
+      - 8493ed8dd732
+      - 01239919dfa1
+
+  - name: Create external docker instances
+    os_server:
+      cloud: betacloud
+      name: "docker-external-{{ item }}"
+      flavor: 2C-4GB-10GB
+      image: "Ubuntu 16.04 (Xenial Xerus)"
+      security_groups:
+        - external
+      key_name: infrastructure
+      floating_ip_pools: public
+      delete_fip: yes
+      meta: "groups=external"
+      state: present
+    with_items:
+      - 12f1143cdd61

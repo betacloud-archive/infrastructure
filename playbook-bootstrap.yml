@@ -1,0 +1,14 @@
+---
+- hosts: all
+  gather_facts: false
+
+  tasks:
+  - name: python - install required packages
+    raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+    become: true
+
+- hosts: all
+  gather_facts: yes
+
+  tasks:
+  - command: uptime

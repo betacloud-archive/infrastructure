@@ -1,0 +1,32 @@
+---
+bastion_host: 185.136.140.22
+
+ssh_user: ubuntu
+ssh_port: 22
+
+ansible_ssh_common_args: -o ProxyCommand="ssh -W %h:%p -q {{ ssh_user }}@{{ bastion_host }} -i secrets/id_rsa -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no"
+
+security_group_rules:
+  bastion:
+  - proto: tcp
+    port: "{{ ssh_port }}"
+    cidr: 0.0.0.0/0
+  - proto: icmp
+    port: -1
+    cidr: 0.0.0.0/0
+
+  internal:
+  - proto: tcp
+    port: "{{ ssh_port }}"
+    cidr: 0.0.0.0/0
+  - proto: icmp
+    port: -1
+    cidr: 0.0.0.0/0
+
+  external:
+  - proto: tcp
+    port: "{{ ssh_port }}"
+    cidr: 0.0.0.0/0
+  - proto: icmp
+    port: -1
+    cidr: 0.0.0.0/0
